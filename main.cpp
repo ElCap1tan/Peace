@@ -2,7 +2,8 @@
 #include <iterator>
 using namespace std;
 
-vector<std::string> split(const string& str, const std::string& delimiter) {
+// Split a string at every whitespace and return the result as std::vector
+vector<std::string> split_at_ws(const string& str) {
     istringstream iss(str);
     vector<string> tokens{istream_iterator<string>{iss},
                           istream_iterator<string>{}};
@@ -10,24 +11,43 @@ vector<std::string> split(const string& str, const std::string& delimiter) {
     return tokens;
 }
 
-int main()
-{
-    string conn_to_existing;
+int main() {
+    cout << "Welcome to" << endl
+    << "╔══╗╔══╗╔══╗ ╔══╗╔══╗" << endl
+    << "║╔╗║║╔╗║╚ ╗║ ║╔═╝║╔╗║" << endl
+    << "║╚╝║║║═╣║╚╝╚╗║╚═╗║║═╣" << endl
+    << "║╔═╝╚══╝╚═══╝╚══╝╚══╝" << endl
+    << "║║" << endl
+    << "╚╝" << endl
+    << "A simple OpenDHT example." << endl << endl;
+
+
+    // Ask the user if he wants to connect to an existing OpenDHT network.
+
+    // If true peace will try to establish a connection to a given network
+    bool conn_to_existing_network;
+
+    // The IP of the known network node
     string bootstrap_IP;
-    string bootstrap_Port;
 
-    cout << "Welcome to Peace - A simple OpenDHT example." << endl << endl
-    << "Do you want to connect to an existing network? [y/n]: ";
+    // The port the existing OpenDHT node is running on
+    string bootstrap_port;
 
-    getline(cin, conn_to_existing);
+    cout << "Do you want to connect to an existing network? [y/n]: ";
+    string temp;
+    getline(cin, temp);
+    conn_to_existing_network = temp == "yes" || temp == "y";
 
-    if (conn_to_existing == "y" || conn_to_existing == "yes") {
+
+    // If yes, aks for the IP and Port of a known network node.
+    if (conn_to_existing_network) {
         cout << "Enter the IP of a known node: ";
         getline(cin, bootstrap_IP);
         cout << "Enter the OpenDHT service port of the known node: ";
-        getline(cin, bootstrap_Port);
+        getline(cin, bootstrap_port);
     }
 
+    // The port this node should bind to.
     string local_port;
 
     cout << "Enter the port this node should use: ";
@@ -36,22 +56,23 @@ int main()
     dht::DhtRunner node;
 
     // Launch a dht node on a new thread, using a
-    // generated RSA key pair, and listen on port.
+    // generated RSA key pair, and listen on the given port.
+    // Set the note as bootstrap node when not connecting to existing network.
     dht::DhtRunner::Config cfg = dht::DhtRunner::Config();
     cfg.threaded = true;
     cfg.client_identity = dht::crypto::generateIdentity();
-    cfg.dht_config.node_config.is_bootstrap = conn_to_existing.empty();
+    cfg.dht_config.node_config.is_bootstrap = !conn_to_existing_network;
     cfg.dht_config.node_config.network = 0;
     node.run(stoi(local_port), cfg);
 
-    if (conn_to_existing == "y" || conn_to_existing == "yes") {
-        // Join the network through any running node,
-        // here using a known bootstrap node.
-        node.bootstrap(bootstrap_IP, bootstrap_Port);
+    if (conn_to_existing_network) {
+        // Join the network through the running node.
+        node.bootstrap(bootstrap_IP, bootstrap_port);
     }
 
     cout << endl << "[!] Node started. Use 'help' to get a help dialog." << endl << endl;
 
+    // CMD-loop
     while (true) {
         cout << "> ";
 
@@ -60,7 +81,7 @@ int main()
 
         if (cmd.empty()) continue;
 
-        vector<string> tokens = split(cmd, " ");
+        vector<string> tokens = split_at_ws(cmd);
 
         if (tokens[0] == "exit" || tokens[0] == "quit") break;
         else if (tokens[0] == "help") {
@@ -103,9 +124,9 @@ int main()
             }
         } else
             cout << "The command '" << tokens[0]
-            << "' doesn't exit. Use 'help for an overview of the supported commands." << endl;
+            << "' doesn't exit. Use 'help' for an overview of the supported commands." << endl;
     }
-    // wait for dht threads to end
+    // wait for dht thread to end
     node.join();
     return 0;
 }
