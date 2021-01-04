@@ -1,5 +1,5 @@
 # peace 
-A simple OpenDHT example.
+A simple [OpenDHT](https://github.com/savoirfairelinux/opendht) example.
 
 ## Build instructions
 1. Follow the [build and install instructions](https://github.com/savoirfairelinux/opendht/wiki/Build-the-library) of OpenDHT to install the library on your system.  
