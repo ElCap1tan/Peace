@@ -41,9 +41,9 @@ vector<string> split_at_ws(string str) {
 }
 
 void store_data(dht::DhtRunner* node, vector<char> buffer, size_t size, string file_path) {
-    auto hash = dht::InfoHash::get(buffer.data());
+    auto hash = dht::InfoHash::get((uint8_t*) buffer.data(), size);
 
-    node->put(hash, dht::Value((const uint8_t *) buffer.data(), size));
+    node->put(hash, dht::Value((const uint8_t*) buffer.data(), size), dht::DoneCallback {}, dht::time_point::max(), true);
 
     std::ofstream outfile (file_path + ".odht", std::ofstream::out | std::ofstream::app);
     outfile << hash << std::endl;
@@ -57,15 +57,14 @@ void store_file(dht::DhtRunner* node, string file_path) {
 
     std::ifstream fin(file_path, std::ifstream::binary);
     if (fin.is_open()) {
-        vector<char> buffer (4097,0);
-        while (!fin.eof()) {
-            fin.read(buffer.data(), buffer.size());
-            std::streamsize data_size = fin.gcount();
-            if (!data_size) {
-                cout << "[!] The file does not exist or is empty." << endl;
-                return;
-            }
+        const int BUFFER_SIZE = 4096;
+        vector<char> buffer (BUFFER_SIZE + 1,0);
+        while (true) {
+            fin.read(buffer.data(), BUFFER_SIZE);
+            streamsize data_size = ((fin) ? BUFFER_SIZE : fin.gcount());
+            buffer[data_size] = 0;
             store_data(node, buffer, data_size, file_path);
+            if (!fin) break;
         }
 
         cout << "Hash file was created and saved under '" + file_path + ".odht'." << endl;
