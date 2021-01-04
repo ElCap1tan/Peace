@@ -51,12 +51,12 @@ void store_data(dht::DhtRunner* node, vector<char> buffer, size_t size, string f
 }
 
 void store_file(dht::DhtRunner* node, string file_path) {
-    // Make sure the file we save the hashes to is empty.
-    std::ofstream ofs (file_path + ".odht", std::ofstream::out | std::ofstream::trunc);
-    ofs.close();
-
     std::ifstream fin(file_path, std::ifstream::binary);
     if (fin.is_open()) {
+        // Make sure the file we save the hashes to is empty.
+        std::ofstream ofs (file_path + ".odht", std::ofstream::out | std::ofstream::trunc);
+        ofs.close();
+
         const int BUFFER_SIZE = 4096;
         vector<char> buffer (BUFFER_SIZE + 1,0);
         while (true) {
@@ -66,10 +66,9 @@ void store_file(dht::DhtRunner* node, string file_path) {
             store_data(node, buffer, data_size, file_path);
             if (!fin) break;
         }
-
         cout << "Hash file was created and saved under '" + file_path + ".odht'." << endl;
     } else {
-        cout << "[!] Couldn't open the file." << endl;
+        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it." << endl;
     }
 }
 
@@ -92,20 +91,21 @@ void restore_file(dht::DhtRunner* node, string file_path) {
         return;
     }
 
-    // Make sure the file we restore to is empty.
-    std::ofstream ofs (orig_file_name, std::ofstream::out | std::ofstream::trunc);
-    ofs.close();
-
     std::ifstream fin(file_path);
     if (fin.is_open()) {
+        // Make sure the file we restore to is empty.
+        std::ofstream ofs (orig_file_name, std::ofstream::out | std::ofstream::trunc);
+        ofs.close();
+
         std::string line;
         while (std::getline(fin, line)) {
             restore_data(node, line, orig_file_name);
         }
         fin.close();
+        cout << "The file was restored and saved under '" + orig_file_name + "'." << endl;
+    } else {
+        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it." << endl;
     }
-
-    cout << "The file was restored and saved under '" + orig_file_name + "'." << endl;
 }
 
 void start_node(dht::DhtRunner* node) {
