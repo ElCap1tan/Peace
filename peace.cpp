@@ -50,10 +50,10 @@ vector<string> split_at_ws(string str) {
 
 // Stores a chunk of data contained in buffer into the OpenDHT instance running in node
 // and writes its hash into a file for later retrieval.
-void store_data(dht::DhtRunner* node, vector<char> buffer, size_t size, ofstream* hash_file) {
-    auto hash = dht::InfoHash::get((uint8_t*) buffer.data(), size);
+void store_data(dht::DhtRunner *node, vector<char> buffer, size_t size, ofstream *hash_file) {
+    auto hash = dht::InfoHash::get((uint8_t *) buffer.data(), size);
 
-    node->put(hash, dht::Value((const uint8_t*) buffer.data(), size), [&hash](bool success) {
+    node->put(hash, dht::Value((const uint8_t *) buffer.data(), size), [&hash](bool success) {
         cout << "[!] Put of chunk finished with " << (success ? "success." : "failure.") << endl;
         cout << "> ";
         cout.flush();
@@ -64,19 +64,19 @@ void store_data(dht::DhtRunner* node, vector<char> buffer, size_t size, ofstream
 
 // Stores the file under file_path into the OpenDHT instance running in node
 // and creates a file with a list of hashes for later retrieval.
-void store_file(dht::DhtRunner* node, string file_path) {
+void store_file(dht::DhtRunner *node, string file_path) {
     ifstream fin(file_path, ifstream::binary);
     if (fin.is_open()) {
         auto hash_file_path = file_path + get_file_extension();
 
         // Make sure the file we save the hashes to is empty.
-        ofstream ofs (hash_file_path, ofstream::out | ofstream::trunc);
+        ofstream ofs(hash_file_path, ofstream::out | ofstream::trunc);
         ofs.close();
 
-        ofstream hash_file (hash_file_path, ofstream::out | ofstream::app);
+        ofstream hash_file(hash_file_path, ofstream::out | ofstream::app);
 
         const int BUFFER_SIZE = 4096; // BYTES = 4 kib
-        vector<char> buffer (BUFFER_SIZE + 1,0);
+        vector<char> buffer(BUFFER_SIZE + 1, 0);
         while (true) {
             fin.read(buffer.data(), BUFFER_SIZE);
             streamsize data_size = ((fin) ? BUFFER_SIZE : fin.gcount());
@@ -87,19 +87,20 @@ void store_file(dht::DhtRunner* node, string file_path) {
         hash_file.close();
         cout << "Hash file was created and saved under '" << hash_file_path + "'." << endl;
     } else {
-        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it." << endl;
+        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it."
+             << endl;
     }
 }
 
 // Restores a chunk of data of the hash out of the OpenDHT instance running in node
 // and writes it into a file to restore its original content.
-void restore_data(dht::DhtRunner* node, string hash, ofstream* out_file) {
+void restore_data(dht::DhtRunner *node, string hash, ofstream *out_file) {
     auto values = node->get(dht::InfoHash(hash)).get();
-    auto data = values[0]->data.data();
     if (values.empty()) {
         cout << "> [!] The chunk with hash '" << hash << "' couldn't be restored." << endl;
         return;
     }
+    auto data = values[0]->data.data();
     for (int i = 0; i < values[0]->size(); i++) {
         *out_file << data[i];
     }
@@ -107,7 +108,7 @@ void restore_data(dht::DhtRunner* node, string hash, ofstream* out_file) {
 }
 
 // Restores the original file from the OpenDHT instance running in node using the hash file under hash_file_path.
-void restore_file(dht::DhtRunner* node, string hash_file_path) {
+void restore_file(dht::DhtRunner *node, string hash_file_path) {
     auto delimiter_i = hash_file_path.find_last_of('.');
     auto orig_file_name = hash_file_path.substr(0, delimiter_i);
     auto extension = hash_file_path.substr(delimiter_i + 1);
@@ -119,10 +120,10 @@ void restore_file(dht::DhtRunner* node, string hash_file_path) {
     ifstream fin(hash_file_path);
     if (fin.is_open()) {
         // Make sure the file we restore to is empty.
-        ofstream ofs (orig_file_name, ofstream::out | ofstream::trunc);
+        ofstream ofs(orig_file_name, ofstream::out | ofstream::trunc);
         ofs.close();
 
-        ofstream outfile (orig_file_name, ofstream::binary | ofstream::app);
+        ofstream outfile(orig_file_name, ofstream::binary | ofstream::app);
 
         string line;
         while (getline(fin, line)) {
@@ -132,12 +133,13 @@ void restore_file(dht::DhtRunner* node, string hash_file_path) {
         outfile.close();
         cout << "The file was restored and saved under '" + orig_file_name + "'." << endl;
     } else {
-        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it." << endl;
+        cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it."
+             << endl;
     }
 }
 
 // Takes some configuration input from the user and starts running the OpenDHT instance in node.
-void start_node(dht::DhtRunner* node) {
+void start_node(dht::DhtRunner *node) {
     // Ask the user if he wants to connect to an existing OpenDHT network.
 
     // If true peace will try to establish a connection to a given network.
@@ -213,7 +215,7 @@ void start_node(dht::DhtRunner* node) {
 }
 
 // The control loop for the CLI interface.
-void cmd_loop(dht::DhtRunner* node) {
+void cmd_loop(dht::DhtRunner *node) {
     while (true) {
         cout << "> ";
 
