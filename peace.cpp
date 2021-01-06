@@ -35,6 +35,8 @@ void print_welcome_message() {
 // Returns the file extension used for the hash files.
 string get_file_extension() { return ".pce"; }
 
+// Returns the storage limit that should be used for a single OpenDHT node.
+// Needs to be increased if you want to store larger amounts of data in a small group of nodes.
 size_t get_storage_limit() { return 1024 * 1024 * 512; } // 512 MB
 
 // Split a string at every whitespace and return the result as std::vector.
@@ -94,6 +96,10 @@ void store_file(dht::DhtRunner* node, string file_path) {
 void restore_data(dht::DhtRunner* node, string hash, ofstream* out_file) {
     auto values = node->get(dht::InfoHash(hash)).get();
     auto data = values[0]->data.data();
+    if (values.empty()) {
+        cout << "> [!] The chunk with hash '" << hash << "' couldn't be restored." << endl;
+        return;
+    }
     for (int i = 0; i < values[0]->size(); i++) {
         *out_file << data[i];
     }
@@ -134,27 +140,45 @@ void restore_file(dht::DhtRunner* node, string hash_file_path) {
 void start_node(dht::DhtRunner* node) {
     // Ask the user if he wants to connect to an existing OpenDHT network.
 
-    // If true peace will try to establish a connection to a given network
+    // If true peace will try to establish a connection to a given network.
     bool conn_to_existing_network;
 
-    // The IP of the known network node
+    // If true will send broadcast peer discovery requests over the local network.
+    bool peer_discovery;
+
+    // If true will send broadcast peer publish requests over the local network.
+    bool peer_publish;
+
+    // The IP of the known network node.
     string bootstrap_IP;
 
-    // The port the existing OpenDHT node is running on
+    // The port the existing OpenDHT node is running on.
     string bootstrap_port;
 
-    cout << "Do you want to connect to an existing network? [y/n]: ";
+
     string temp;
+
+    cout << "Do you want to connect to an existing remote network?" << endl
+         << "If not peer discovery will be used to find nodes inside the local network. [y/n]: ";
     getline(cin, temp);
-    conn_to_existing_network = temp == "yes" || temp == "y";
+    conn_to_existing_network = (temp == "yes" || temp == "y");
 
 
     // If yes, ask for the IP and port of a known network node.
     if (conn_to_existing_network) {
-        cout << "Enter the IP of a known node: ";
+        cout << "Enter the IP of the known remote node: ";
         getline(cin, bootstrap_IP);
-        cout << "Enter the OpenDHT service port of the known node: ";
+        cout << "Enter the OpenDHT service port of the known remote node: ";
         getline(cin, bootstrap_port);
+        cout << "[!] Connecting to the bootstrap node '" << bootstrap_IP << ":" << bootstrap_port << "'."
+             << "Do you want to activate peer discovery for the local network anyway? [y/n]: ";
+        getline(cin, temp);
+        peer_discovery = (temp == "yes" || temp == "y");
+        peer_publish = peer_discovery;
+    } else {
+        cout << "[!] Using peer discovery in the local network." << endl;
+        peer_publish = true;
+        peer_discovery = true;
     }
 
     // The local port this node should bind to.
@@ -168,12 +192,13 @@ void start_node(dht::DhtRunner* node) {
     // Set the note as bootstrap node when not connecting to existing network.
     dht::DhtRunner::Config cfg = dht::DhtRunner::Config();
     cfg.threaded = true;
-    cfg.peer_discovery = true;
-    cfg.peer_publish = true;
+    cfg.peer_discovery = peer_discovery;
+    cfg.peer_publish = peer_publish;
+    // Changing the network ID will prevent this node from accidentally connecting to other public nodes.
+    cfg.dht_config.node_config.network = 420;
     cfg.client_identity = dht::crypto::generateIdentity();
-    cfg.dht_config.node_config.is_bootstrap = !conn_to_existing_network;
-    cfg.dht_config.node_config.max_peer_req_per_sec = -1;
     cfg.dht_config.node_config.max_req_per_sec = -1;
+    cfg.dht_config.node_config.max_peer_req_per_sec = -1;
     cfg.dht_config.node_config.max_searches = -1;
 
     node->run(stoi(local_port), cfg);
