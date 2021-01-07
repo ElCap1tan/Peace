@@ -53,7 +53,7 @@ vector<string> split_at_ws(string str) {
 void store_data(dht::DhtRunner *node, vector<char> buffer, size_t size, ofstream *hash_file) {
     auto hash = dht::InfoHash::get((uint8_t *) buffer.data(), size);
 
-    node->put(hash, dht::Value((const uint8_t *) buffer.data(), size), [&hash](bool success) {
+    node->put(hash, dht::Value((const uint8_t *) buffer.data(), size), [](bool success) {
         cout << "[!] Put of chunk finished with " << (success ? "success." : "failure.") << endl;
         cout << "> ";
         cout.flush();
@@ -94,44 +94,58 @@ void store_file(dht::DhtRunner *node, string file_path) {
 
 // Restores a chunk of data of the hash out of the OpenDHT instance running in node
 // and writes it into a file to restore its original content.
-void restore_data(dht::DhtRunner *node, string hash, ofstream *out_file) {
+bool restore_data(dht::DhtRunner *node, string hash, ofstream *out_file) {
     auto values = node->get(dht::InfoHash(hash)).get();
     if (values.empty()) {
-        cout << "> [!] The chunk with hash '" << hash << "' couldn't be restored." << endl;
-        return;
+        cout << "[!] The chunk with hash '0x" << hash << "' couldn't be restored." << endl;
+        return false;
     }
     auto data = values[0]->data.data();
     for (int i = 0; i < values[0]->size(); i++) {
         *out_file << data[i];
     }
-    cout << "> [!] Restored chunk with hash '" << hash << "' successfully." << endl;
+    cout << "[!] Restored chunk with hash '0x" << hash << "' successfully." << endl;
+    return true;
 }
 
 // Restores the original file from the OpenDHT instance running in node using the hash file under hash_file_path.
 void restore_file(dht::DhtRunner *node, string hash_file_path) {
-    auto delimiter_i = hash_file_path.find_last_of('.');
-    auto orig_file_name = hash_file_path.substr(0, delimiter_i);
-    auto extension = hash_file_path.substr(delimiter_i + 1);
-    if ("." + extension != get_file_extension()) {
-        cout << "[!] Please provide a valid hash file for restoration." << endl;
+    auto hash_extension_delimiter_i = hash_file_path.find_last_of('.');
+    auto orig_file_path = hash_file_path.substr(0, hash_extension_delimiter_i);
+    auto hash_file_extension = hash_file_path.substr(hash_extension_delimiter_i + 1);
+    auto orig_extension_delimiter_i = orig_file_path.find_last_of('.');
+    auto orig_file_extension = orig_file_path.substr(orig_extension_delimiter_i + 1);
+    orig_file_path = orig_file_path.substr(0, orig_extension_delimiter_i) + "_restored." + orig_file_extension;
+
+    if ("." + hash_file_extension != get_file_extension()) {
+        cout << "[!] Please provide a valid ." << get_file_extension() << " hash file for restoration." << endl;
         return;
     }
 
     ifstream fin(hash_file_path);
     if (fin.is_open()) {
         // Make sure the file we restore to is empty.
-        ofstream ofs(orig_file_name, ofstream::out | ofstream::trunc);
+        ofstream ofs(orig_file_path, ofstream::out | ofstream::trunc);
         ofs.close();
 
-        ofstream outfile(orig_file_name, ofstream::binary | ofstream::app);
+        ofstream outfile(orig_file_path, ofstream::binary | ofstream::app);
 
         string line;
         while (getline(fin, line)) {
-            restore_data(node, line, &outfile);
+            if (!restore_data(node, line, &outfile)) {
+                cout << "[!] Aborting restoration and deleting broken file '" << orig_file_path << "'." << endl;
+                fin.close();
+                outfile.close();
+                if (remove(orig_file_path.c_str()))
+                    cout << "[!] Error deleting the broken file. Consider deleting it manually" << endl;
+                else
+                    cout << "[!] Successfully deleted broken file." << endl;
+                return;
+            }
         }
         fin.close();
         outfile.close();
-        cout << "The file was restored and saved under '" + orig_file_name + "'." << endl;
+        cout << "The file was restored and saved under '" + orig_file_path + "'." << endl;
     } else {
         cout << "[!] Couldn't open the file. Make sure it exists and you have the needed permissions to access it."
              << endl;
