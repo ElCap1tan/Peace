@@ -32,7 +32,9 @@
 *.app
 
 # CMake
+build/
 cmake-build-*/
 
-# IDEA project files
+# IDEA and VS Code project files
 .idea/
+.vscode/
